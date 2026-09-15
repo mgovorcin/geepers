@@ -28,7 +28,11 @@ from geepers.analysis import (
 from geepers.constants import SENTINEL_1_WAVELENGTH
 from geepers.gps_sources import SideshowSource, UnrSource
 from geepers.io import XarrayReader
-from geepers.processing import get_quality_reader, process_insar_data
+from geepers.processing import (
+    get_quality_reader,
+    merge_gps_insar,
+    process_insar_data,
+)
 from geepers.quality import select_gps_reference
 from geepers.uncertainty import get_sigma_los_df
 
@@ -248,14 +252,9 @@ def main(
     logger.info("Merging GPS and InSAR tables per station")
     station_to_merged: dict[str, pd.DataFrame] = {}
     for station_id in tqdm(station_to_los_gps, desc="Merging GPS and InSAR"):
-        # Use asof merge in case GPS is datetime and insar is date
-        station_to_merged[station_id] = pd.merge_asof(
-            left=station_to_los_gps[station_id],
-            right=station_to_insar[station_id],
-            tolerance=pd.Timedelta("1D"),
-            direction="nearest",
-            left_index=True,
-            right_index=True,
+        station_to_merged[station_id] = merge_gps_insar(
+            station_to_los_gps[station_id],
+            station_to_insar[station_id],
         )
 
     # Save results

@@ -98,16 +98,72 @@ class TestBinnedProfile:
 
 
 class TestEpochRMSE:
+    @staticmethod
+    def _corrupt_one_epoch(merged, scale=0.05):
+        """Shift one acquisition by a different amount at every station."""
+        bad_date = next(iter(merged.values())).index[30]
+        # Seed off the station's position, not hash(), which Python
+        # randomizes per process and made this test flaky.
+        for i, df in enumerate(merged.values()):
+            df.loc[bad_date, "los_insar"] += np.random.default_rng(i).normal(0, scale)
+        return bad_date
+
     def test_flags_bad_epoch(self, merged_network):
         merged, _ = merged_network
-        # corrupt one acquisition across all stations *differently*
-        bad_date = next(iter(merged.values())).index[30]
-        for k, df in merged.items():
-            df.loc[bad_date, "los_insar"] += np.random.default_rng(
-                hash(k) % 2**32
-            ).normal(0, 0.05)
+        bad_date = self._corrupt_one_epoch(merged)
         out = epoch_rmse(merged)
         assert out.loc[bad_date, "rmse"] > 3 * out["rmse"].median()
+
+    def test_debias_removes_station_offset_floor(self, merged_network):
+        """A constant per-station offset is datum bookkeeping, not error:
+        it must not raise the misfit of every epoch."""
+        merged, _ = merged_network
+        offsets = np.linspace(-0.1, 0.1, len(merged))
+        biased = {
+            k: df.assign(los_insar=df["los_insar"] + off)
+            for (k, df), off in zip(merged.items(), offsets, strict=True)
+        }
+
+        assert epoch_rmse(biased, debias_stations=False)["rmse"].median() > (
+            5 * epoch_rmse(merged, debias_stations=False)["rmse"].median()
+        )
+        np.testing.assert_allclose(
+            epoch_rmse(biased)["rmse"], epoch_rmse(merged)["rmse"], atol=1e-12
+        )
+
+    def test_debias_preserves_epoch_specific_error(self, merged_network):
+        """Debiasing must not blunt the thing the function exists to find."""
+        merged, _ = merged_network
+        bad_date = self._corrupt_one_epoch(merged)
+        out = epoch_rmse(merged)
+        assert out.loc[bad_date, "rmse"] > 3 * out["rmse"].median()
+
+    def test_debias_off_reproduces_median_only_convention(self, merged_network):
+        merged, _ = merged_network
+        wide = pd.concat(
+            [(d["los_insar"] - d["los_gps"]).rename(s) for s, d in merged.items()],
+            axis=1,
+        )
+        resid = wide.sub(wide.median(axis=1), axis=0)
+        expected = np.sqrt((resid**2).mean(axis=1))
+
+        out = epoch_rmse(merged, debias_stations=False)
+        np.testing.assert_allclose(out["rmse"], expected, atol=1e-12)
+
+    def test_min_epochs_clamped_to_available_epochs(self):
+        """A stack with fewer epochs than `min_epochs` must not come back
+        empty."""
+        dates = pd.date_range("2020-01-01", periods=3, freq="12D")
+        rng = np.random.default_rng(0)
+        merged = {
+            f"ST{k:02d}": pd.DataFrame(
+                {"los_gps": np.zeros(3), "los_insar": rng.normal(0, 0.01, 3)},
+                index=dates,
+            )
+            for k in range(5)
+        }
+        out = epoch_rmse(merged, min_epochs=10)
+        assert len(out) == 3
 
     def test_datum_shift_invariant(self, merged_network):
         merged, _ = merged_network

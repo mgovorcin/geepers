@@ -245,14 +245,38 @@ def binned_rmse_profile(
 def epoch_rmse(
     station_to_merged_df: Mapping[str, pd.DataFrame],
     min_stations: int = 3,
+    *,
+    debias_stations: bool = True,
+    min_epochs: int = 5,
 ) -> pd.DataFrame:
     """Network-wide InSAR-GPS misfit per acquisition epoch.
 
     For each date, computes the spread of the per-station residuals
-    ``los_insar - los_gps`` after removing the network median at that
-    date (which absorbs any common datum/reference shift). Spikes in
-    the result flag problem epochs: ionospheric storms, unwrapping
-    failures, snow cover.
+    ``los_insar - los_gps`` across the network. Spikes flag problem
+    epochs: ionospheric storms, unwrapping failures, snow cover.
+
+    Two nuisance terms are removed first. Writing the residual as
+
+    ``r_s(t) = c_s - R(t) + eps_s(t)``
+
+    `R(t)` is whatever the whole scene shares at that epoch (reference
+    pixel motion, a scene-wide unwrapping constant) and is removed by
+    subtracting the network median at each date. `eps_s(t)` is the
+    epoch-specific error this function is meant to expose.
+
+    `c_s` is a *constant per station*, and is pure datum bookkeeping:
+    GPS is zeroed by its window mean while InSAR is zeroed at its
+    reference epoch, so ``c_s = mean_t(u_s) - u_s(t_ref)`` even for a
+    perfect InSAR product. Left in, its scatter across stations sits as
+    a fixed floor under every epoch - typically a large fraction of the
+    total - so the *level* of the result means nothing and only the
+    epoch-to-epoch variation is interpretable. `debias_stations`
+    removes it by subtracting each station's median residual, making
+    the level directly readable as an epoch error.
+
+    This costs the ability to see a bias a station carries at *every*
+    epoch, which is not what this function is for; use the per-station
+    RMSE (`geepers.quality`) for that.
 
     Parameters
     ----------
@@ -260,6 +284,14 @@ def epoch_rmse(
         Mapping from station name to the merged per-station dataframe.
     min_stations : int
         Skip epochs observed by fewer stations. Default 3.
+    debias_stations : bool
+        Remove each station's constant residual offset before comparing
+        stations, as described above. Default True. Pass False for the
+        network-median-only convention.
+    min_epochs : int
+        When debiasing, drop stations with fewer epochs than this, since
+        their offset cannot be estimated reliably. Clamped to the number
+        of epochs available. Default 5.
 
     Returns
     -------
@@ -274,15 +306,20 @@ def epoch_rmse(
         frames.append(resid)
     wide = pd.concat(frames, axis=1)
 
+    if debias_stations:
+        # Median, not mean, so one blown-up epoch doesn't set the offset.
+        enough = wide.notna().sum(axis=0) >= min(min_epochs, len(wide))
+        wide = wide.loc[:, enough]
+        wide = wide.sub(wide.median(axis=0), axis=1)
+
     resid = wide.sub(wide.median(axis=1), axis=0)
     n = resid.notna().sum(axis=1)
     out = pd.DataFrame(
         {
             "rmse": np.sqrt((resid**2).mean(axis=1)),
-            "mad": (
-                1.4826
-                * (resid - resid.median(axis=1).values[:, None]).abs().median(axis=1)
-            ),
+            # Rows of `resid` have median 0 by construction, so the
+            # deviations the MAD needs are just `resid` itself.
+            "mad": 1.4826 * resid.abs().median(axis=1),
             "n_stations": n,
         }
     )

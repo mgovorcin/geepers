@@ -18,6 +18,9 @@ from geepers.io import XarrayReader
 
 logger = logging.getLogger("geepers")
 
+# Largest GPS/InSAR time separation still treated as the same epoch.
+DEFAULT_EPOCH_TOLERANCE = pd.Timedelta("1D")
+
 PHASE_TO_METERS = float(SENTINEL_1_WAVELENGTH) / (4.0 * np.pi)
 
 
@@ -203,3 +206,74 @@ def get_quality_reader(
         return XarrayReader.from_file_list(
             quality_files, file_date_fmt, units="unitless"
         )
+
+
+def merge_gps_insar(
+    df_gps: pd.DataFrame,
+    df_insar: pd.DataFrame,
+    tolerance: pd.Timedelta = DEFAULT_EPOCH_TOLERANCE,
+) -> pd.DataFrame:
+    """Merge one station's daily GPS table with its InSAR acquisitions.
+
+    The two series live on different time grids: GPS is (nearly) daily,
+    while InSAR has one sample per acquisition. This aligns them so that
+
+    * every acquisition appears exactly **once**, carrying the GPS value
+      of the nearest day within `tolerance`, and
+    * the GPS days that no acquisition claimed are kept as extra rows
+      (with NaN InSAR), so the dense GPS record is still available to
+      velocity fits.
+
+    Aligning the other way round - asof-matching acquisitions onto the
+    daily GPS index - replicates a single acquisition onto every GPS day
+    within `tolerance` of it (up to three rows for a 1-day tolerance).
+    That silently triples the weight of each epoch in every downstream
+    statistic and splits one acquisition into several "epochs" that are
+    each seen by a different subset of stations.
+
+    Parameters
+    ----------
+    df_gps
+        Indexed by date, with `los_gps` / `sigma_los` columns.
+    df_insar
+        Indexed by acquisition date, with `los_insar` and optionally
+        `temporal_coherence` / `similarity` columns.
+    tolerance
+        Largest GPS/InSAR time separation still considered the same
+        epoch. Default 1 day.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Indexed by the union of acquisition dates and GPS days, sorted,
+        with the union of both frames' columns.
+
+    """
+    columns = list(df_gps.columns) + list(df_insar.columns)
+    if df_gps.empty:
+        # No GPS in the window: nothing to compare against, so this
+        # station stays out of the comparison table entirely.
+        return pd.DataFrame(
+            {c: pd.Series(dtype="float64") for c in columns},
+            index=df_gps.index[:0],
+        )
+
+    df_gps = df_gps.sort_index()
+    df_insar = df_insar.sort_index()
+
+    # One row per acquisition, carrying the nearest GPS day within tolerance.
+    at_epochs = pd.merge_asof(
+        left=df_insar,
+        right=df_gps,
+        tolerance=tolerance,
+        direction="nearest",
+        left_index=True,
+        right_index=True,
+    )
+
+    # Keep the GPS days no acquisition landed on, so the daily record
+    # remains available for rate fitting.
+    gps_only = df_gps[~df_gps.index.isin(at_epochs.index)]
+
+    merged = pd.concat([at_epochs, gps_only]).sort_index()
+    return merged[columns]
