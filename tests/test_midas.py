@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from geepers.midas import MidasResult, midas, select_pairs
+from code.other.midas import MidasResult, midas, select_pairs
 
 
 class TestMidasResult:
