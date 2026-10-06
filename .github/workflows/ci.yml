@@ -29,10 +29,6 @@ jobs:
         with:
           python-version: "3.12"
       - uses: pre-commit/action@v3.0.1
-        env:
-          # The mypy hook is broken by a numpy-stub vs mypy-target mismatch
-          # (environment issue, not a code problem); skip it in CI.
-          SKIP: mypy
 
   pytest:
     strategy:
