@@ -43,7 +43,9 @@ def grid_with_bowl():
 
 def test_inside_nodes_recover_the_regional_field(grid_with_bowl):
     nodes, box, plane, inside = grid_with_bowl
-    out = reinterpolate_nodes(nodes, box, columns=(("vu", "sigma_vu"), ("ve", "sigma_ve")))
+    out = reinterpolate_nodes(
+        nodes, box, columns=(("vu", "sigma_vu"), ("ve", "sigma_ve"))
+    )
 
     assert out["reinterpolated"].to_numpy().tolist() == inside.tolist()
     # Inside: the bowl is gone, the plane is back (median filter of a plane
@@ -51,8 +53,12 @@ def test_inside_nodes_recover_the_regional_field(grid_with_bowl):
     err = out.loc[inside, "vu"].to_numpy() - plane[inside]
     assert np.max(np.abs(err)) < 1.0, err
     # Outside: untouched, bit for bit
-    np.testing.assert_array_equal(out.loc[~inside, "vu"].to_numpy(), nodes.loc[~inside, "vu"].to_numpy())
-    np.testing.assert_array_equal(out.loc[~inside, "sigma_vu"], nodes.loc[~inside, "sigma_vu"])
+    np.testing.assert_array_equal(
+        out.loc[~inside, "vu"].to_numpy(), nodes.loc[~inside, "vu"].to_numpy()
+    )
+    np.testing.assert_array_equal(
+        out.loc[~inside, "sigma_vu"], nodes.loc[~inside, "sigma_vu"]
+    )
     # Sigmas inside are finite and positive
     assert np.all(np.isfinite(out.loc[inside, "sigma_vu"]))
     assert np.all(out.loc[inside, "sigma_vu"] > 0)
@@ -81,13 +87,17 @@ def test_accepts_iterable_and_geoseries(grid_with_bowl):
     out_iter = reinterpolate_nodes(nodes, [box], columns=(("vu", "sigma_vu"),))
     assert out_iter["reinterpolated"].sum() == inside.sum()
     gpd = pytest.importorskip("geopandas")
-    out_gs = reinterpolate_nodes(nodes, gpd.GeoSeries([box], crs="EPSG:4326"), columns=(("vu", "sigma_vu"),))
+    out_gs = reinterpolate_nodes(
+        nodes, gpd.GeoSeries([box], crs="EPSG:4326"), columns=(("vu", "sigma_vu"),)
+    )
     pd.testing.assert_frame_equal(out_iter, out_gs)
 
 
 def test_missing_columns_are_skipped(grid_with_bowl):
     nodes, box, _, inside = grid_with_bowl
-    out = reinterpolate_nodes(nodes, box, columns=(("vn", "sigma_vn"), ("vu", "sigma_vu")))
+    out = reinterpolate_nodes(
+        nodes, box, columns=(("vn", "sigma_vn"), ("vu", "sigma_vu"))
+    )
     assert "vn" not in out.columns
     assert out["reinterpolated"].sum() == inside.sum()
 
@@ -96,6 +106,10 @@ def test_requires_shapely_with_hint(grid_with_bowl, monkeypatch):
     from geepers import _optional
 
     nodes, box, _, _ = grid_with_bowl
-    monkeypatch.setattr(_optional.importlib, "import_module", lambda name: (_ for _ in ()).throw(ImportError(name)))
+    monkeypatch.setattr(
+        _optional.importlib,
+        "import_module",
+        lambda name: (_ for _ in ()).throw(ImportError(name)),
+    )
     with pytest.raises(ImportError, match=r"geepers\[grid\]"):
         reinterpolate_nodes(nodes, box)
