@@ -67,3 +67,50 @@ f = open(filename)
   (see any module); add it to new files.
 - When code from this repository is reused elsewhere, follow
   [AGENTS.md](AGENTS.md): attribution comment next to the code, per NOTICE.
+
+---
+
+# Working in this repo
+
+Sections below follow `00_tools/standards/CLAUDE.md.template`. geepers' role in
+the Venti / DISP-CAL / VLM system is described in Venti's `docs/specs.md` §4.
+
+## What this repo is
+
+GNSS data access and GNSS-vs-InSAR analysis. In the calibration system it is
+the **single source** for UNR grid/station retrieval, GPS Imaging
+re-interpolation and Euler-pole plate motion; Venti and cal-disp must not
+re-implement these.
+
+## Architecture (target, Venti `docs/plan.md` T12–T15)
+
+- **core** (what the operational image installs): `gps_sources/` (UNR grid,
+  UNR stations, sideshow), `schemas`, `utils`.
+- **`[grid]`**: `gps_imaging` (incl. exclusion-area re-interpolation), `euler`.
+- **`[analysis]`**: MIDAS, strain, cross-validation, variability, plotting,
+  zarr/dask workflows — used by the validation package, never by cal-disp.
+- **`[all]`** = everything.
+
+## Invariants
+
+- Nothing in core imports dask, zarr, pandera, rasterio, geopandas or
+  matplotlib at module import time (the `core-only` CI job checks this once
+  T13 lands).
+- Cassette-based tests (`pytest-recording`); no live network in CI.
+- SPDX header on every `.py` in `src/` and `scripts/` (enforced by pre-commit).
+
+## Commands
+
+```bash
+export RATTLER_CACHE_DIR=/u/aurora-r0/govorcin/.cache/rattler UV_CACHE_DIR=/u/aurora-r0/govorcin/.cache/uv
+pixi install -e dev
+pixi run -e dev test
+pixi run -e dev lint
+```
+
+## Conventions
+
+Never commit on `main` (it mirrors `opera-adt/geepers`); `feature/<topic>`
+branches, one concern each; see `CONTRIBUTING.md`. Every addition ships with
+its unit test; API changes that alter numbers get a regression test on a
+fixture.
