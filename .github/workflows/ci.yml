@@ -63,8 +63,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        # TODO: pixi has multi env support
-    name: ${{ matrix.os }}
+        # One pixi environment per dependency tier (see pyproject
+        # [tool.pixi.environments]): the full set, and the extras-free core
+        # with its test subset. `core-only` above covers the pip route.
+        include:
+          - env: test
+            tests: ""
+          - env: core-test
+            tests: tests/test_core_imports.py tests/test_plate_table.py tests/gps_sources
+    name: ${{ matrix.os }} / ${{ matrix.env }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -80,18 +87,16 @@ jobs:
           cache: true
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
       - name: Install environment
-        run: |
-          pixi install
-          pixi install -e test
+        run: pixi install -e ${{ matrix.env }}
 
       - name: Test
         run: |
-          pixi run -e test pytest --record-mode none --cov-report=xml
+          pixi run -e ${{ matrix.env }} pytest --record-mode none --cov-report=xml ${{ matrix.tests }}
 
       - name: Upload coverage
         uses: actions/upload-artifact@v5
         with:
-          name: coverage-${{ matrix.os }}
+          name: coverage-${{ matrix.os }}-${{ matrix.env }}
           path: coverage.xml
           if-no-files-found: ignore
 
