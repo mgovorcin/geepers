@@ -28,7 +28,9 @@ def test_core_import_does_not_load_heavy_modules():
         "from geepers.gps_sources import UnrGridSource, UnrSource, SideshowSource\n"
         f"print(sorted({HEAVY!r} & set(sys.modules)))\n"
     )
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
     assert out.stdout.strip() == "[]", f"core import loaded: {out.stdout}"
 
 
@@ -55,7 +57,9 @@ def test_lazy_export_without_extra_raises_import_error(monkeypatch):
     import geepers
 
     monkeypatch.setattr(geepers.importlib, "import_module", _raise_import_error)
-    geepers.__dict__.pop("XarrayReader", None)  # drop the cache if an earlier test filled it
+    geepers.__dict__.pop(
+        "XarrayReader", None
+    )  # drop the cache if an earlier test filled it
     with pytest.raises(ImportError):
         _ = geepers.XarrayReader
 
