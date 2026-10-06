@@ -102,9 +102,13 @@ tyro = ">=0.9.24,<0.10"
 pandera = "*"
 
 [tool.pixi.tasks]
+# Shared task names (00_tools/standards/pixi-tasks.toml): test, lint, docs, golden, e2e
 check = "pre-commit run -a"
+lint = "pre-commit run -a"
 test = "pytest"
 docs = "mkdocs serve"
+golden = "echo 'no golden dataset in this repo'"
+e2e = "echo 'no e2e validation in this repo'"
 
 
 # pixi install -e test
@@ -143,6 +147,10 @@ mkdocs-section-index = "*"
 [tool.pixi.environments]
 test = ["test"]
 docs = ["docs"]
+# Shared environment names: `dev` for development, `ops` = the default
+# dependency set only (what an operational image installs).
+dev = ["test", "docs"]
+ops = { features = [], solve-group = "ops" }
 
 
 [tool.setuptools_scm]
@@ -215,7 +223,9 @@ target-version = ["py311", "py312", "py313"]
 preview = true
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12: numpy >= 2.3 stubs use PEP 695 `type` statements, which mypy rejects
+# when targeting 3.11. Runtime support is still >= 3.11.
+python_version = "3.12"
 ignore_missing_imports = true
 plugins = ["pandera.mypy"]
 
@@ -233,4 +243,7 @@ filterwarnings = [
   # pyproj 3.7 warns on size-1 coordinate arrays (single-point Geod/Transformer
   # calls); scoped to pyproj so it can't mask array-to-scalar bugs in our code.
   "ignore:Conversion of an array with ndim > 0 to a scalar:DeprecationWarning:pyproj.*",
+  # rasterio <= 1.5.1 composes transforms with `*` (e.g. `from_bounds`), which
+  # affine 3 deprecates in favour of `@`; same ignore as Venti
+  "ignore:Use `@` matmul instead of `\\*` mul operator.*:PendingDeprecationWarning",
 ]
