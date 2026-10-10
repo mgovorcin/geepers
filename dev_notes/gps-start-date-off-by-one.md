@@ -71,9 +71,30 @@ merge_gps_insar(kept.set_index("date"), insar).los_insar.dropna().index[0]
 1. Compare calendar days in `_filter_by_date`: floor the start bound to the
    day (`_naive(start_date).normalize()`). Do it there rather than in
    `workflows.py`, so that every source and every caller is covered.
-2. Optional: in `merge_gps_insar`, prefer the GPS row on the acquisition's
-   own calendar day, and log a warning when a match falls on a different
-   day.
+2. Not done, and more important than first thought: in `merge_gps_insar`,
+   match each acquisition to the solution of its **own UTC day**, not the
+   nearest timestamp. See the next section.
+
+## Related: afternoon acquisitions get the next day's solution
+
+`merge_gps_insar` picks the GPS row nearest in time. Daily solutions are
+stamped at midnight, so for any acquisition after 12:00 UTC the nearest
+stamp is the *next* day's. A UNR daily solution covers the whole UTC day,
+so a 14:07 acquisition belongs to that day's solution. This affects every
+epoch of such a frame, not just the first. Measured on DISP-S1, against
+matching on the acquisition's own day:
+
+| Frame | Acquisition (UTC) | Epoch GPS difference, median / p95 | Velocity difference, p95 / max |
+| --- | --- | --- | --- |
+| F08882 | 00:26 | 0 / 0 mm | 0 / 0 mm/yr |
+| F11116 | 14:07 | 2.6 / 8.3 mm | 0.41 / 4.5 mm/yr |
+| F39362 | 19:16 | 2.2 / 11.5 mm | 0.37 / 0.40 mm/yr |
+
+disp-xr's `gnss.align` has the same behaviour, so the two tools agree with
+each other while both being wrong. Fix: for daily solutions, match on the
+acquisition's floored day (`insar_times.normalize()`), or compare against
+the solution's centre (stamp + 12 h). Pending a decision, to be made
+together with the disp-xr fix (disp-xr `docs/studies/gnss_validation.md`).
 
 ## Regression test
 
