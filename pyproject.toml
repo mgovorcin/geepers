@@ -24,23 +24,16 @@ classifiers = [
 ]
 license = { file = "LICENSE" }
 
+# Core: what the operational DISP-CAL image installs (GNSS retrieval in
+# `gps_sources`, see docs/dependency_audit.md). Everything heavier is an extra.
 dependencies = [
+  "numpy",
   "pandas",
-  "lxml",
-  "geopandas",
-  "pyogrio",
-  "xarray",
-  "dask>=2025",
   "pyproj",
-  "rasterio",
-  "rioxarray",
-  "scipy",
-  "shapely>=2",
   "requests",
+  "scipy",
   "tqdm",
-  "zarr",
   "tyro>=0.9.24",
-  "pandera",
 ]
 
 
@@ -57,7 +50,23 @@ Discussions = "https://github.com/opera-adt/geepers/discussions"
 Changelog = "https://github.com/opera-adt/geepers/releases"
 
 [project.optional-dependencies]
+# GPS Imaging re-interpolation, Euler-pole plate motion, surfaces/masks
+grid = ["shapely>=2"]
+# InSAR comparison, MIDAS, strain, validation, zarr/dask workflows, schemas
+analysis = [
+  "geopandas",
+  "pyogrio",
+  "xarray",
+  "dask>=2025",
+  "rasterio",
+  "rioxarray",
+  "zarr",
+  "pandera",
+  "lxml",
+  "shapely>=2",
+]
 plot = ["matplotlib>=3.8", "contextily"]
+all = ["geepers[grid,analysis,plot]"]
 test = [
   "pre-commit",
   "pytest",
@@ -81,25 +90,33 @@ platforms = ["osx-arm64", "linux-64"]
 [tool.pixi.pypi-dependencies]
 geepers = { path = ".", editable = true }
 
+# Core conda packages (mirrors [project.dependencies]); extras are features.
 [tool.pixi.dependencies]
 python = ">=3.11"
 pip = ">=21.3"
 git = "*"
+numpy = "*"
 pandas = "*"
+pyproj = "*"
+requests = ">=2.32.4"
+scipy = "*"
+tqdm = ">=4.67.1"
+tyro = ">=0.9.24,<0.10"
+
+[tool.pixi.feature.grid.dependencies]
+shapely = "*"
+
+[tool.pixi.feature.analysis.dependencies]
 geopandas-base = "*"
 pyogrio = "*"
 xarray = "*"
 dask = ">=2025.5.1"
-pyproj = "*"
 rasterio = "*"
 rioxarray = ">=0.19.0"
-scipy = "*"
-shapely = "*"
-requests = ">=2.32.4"
-tqdm = ">=4.67.1"
 zarr = "*"
-tyro = ">=0.9.24,<0.10"
 pandera = "*"
+lxml = "*"
+shapely = "*"
 
 [tool.pixi.tasks]
 # Shared task names (00_tools/standards/pixi-tasks.toml): test, lint, docs, golden, e2e
@@ -145,12 +162,16 @@ mkdocs-section-index = "*"
 
 
 [tool.pixi.environments]
-test = ["test"]
-docs = ["docs"]
-# Shared environment names: `dev` for development, `ops` = the default
-# dependency set only (what an operational image installs).
-dev = ["test", "docs"]
+# `default` keeps the historical behaviour (everything but plotting/docs).
+default = { features = ["grid", "analysis"], solve-group = "default" }
+test = { features = ["grid", "analysis", "test"], solve-group = "default" }
+docs = { features = ["grid", "analysis", "docs"], solve-group = "default" }
+# Shared environment names: `dev` for development, `ops` = the core only
+# (what the operational DISP-CAL image installs), `core-test` = core + test
+# tooling for the import-isolation checks.
+dev = { features = ["grid", "analysis", "test", "docs"], solve-group = "default" }
 ops = { features = [], solve-group = "ops" }
+core-test = { features = ["test"], solve-group = "ops" }
 
 
 [tool.setuptools_scm]
@@ -207,6 +228,7 @@ ignore = [
   "D203",   # 1 blank line required before class docstring
   "N806",   # Variable _ in function should be lowercase
   "SIM108", # Use ternary operator
+  "PLC0415", # `import` inside functions: the optional-dependency seams (see _optional.py)
 ]
 
 [tool.ruff.lint.per-file-ignores]

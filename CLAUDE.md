@@ -82,20 +82,35 @@ the **single source** for UNR grid/station retrieval, GPS Imaging
 re-interpolation and Euler-pole plate motion; Venti and cal-disp must not
 re-implement these.
 
-## Architecture (target, Venti `docs/plan.md` T12–T15)
+## Architecture (Venti `docs/plan.md` T12–T15; audit in `docs/dependency_audit.md`)
 
-- **core** (what the operational image installs): `gps_sources/` (UNR grid,
-  UNR stations, sideshow), `schemas`, `utils`.
-- **`[grid]`**: `gps_imaging` (incl. exclusion-area re-interpolation), `euler`.
-- **`[analysis]`**: MIDAS, strain, cross-validation, variability, plotting,
-  zarr/dask workflows — used by the validation package, never by cal-disp.
-- **`[all]`** = everything.
+- **core** (what the operational image installs; `pip install geepers`):
+  `gps_sources/` (UNR grid, UNR stations, sideshow), `constants`, `utils`,
+  `_optional` (the seams), `_types`. Dependencies: numpy, pandas, scipy,
+  pyproj, requests, tqdm, tyro.
+- **`[grid]`**: `gps_imaging` (incl. exclusion-area re-interpolation), `euler`
+  (+ shapely).
+- **`[analysis]`**: `schemas` (pandera), `io`, `workflows`, MIDAS, strain,
+  cross-validation, variability, zarr/dask — used by the validation package,
+  never by cal-disp. **`[plot]`**, **`[all]`**.
+- pixi envs mirror this: `ops` = core only, `core-test` = core + test tools,
+  `default`/`dev` = grid + analysis (+ test/docs).
+
+### Optional-dependency seams (`geepers/_optional.py`)
+
+geopandas and pandera are `[analysis]`. Core code never imports them at module
+level: `to_point_frame(df)` returns a GeoDataFrame when geopandas is installed
+and the plain DataFrame (with lon/lat columns) otherwise; `validate(df,
+"SchemaName")` runs the pandera schema when available and is a no-op without
+it; `require("pkg")` raises an ImportError naming the extra. `geepers.__init__`
+resolves its analysis re-exports lazily (PEP 562). Keep new core code behind
+these seams.
 
 ## Invariants
 
-- Nothing in core imports dask, zarr, pandera, rasterio, geopandas or
-  matplotlib at module import time (the `core-only` CI job checks this once
-  T13 lands).
+- Nothing in core imports dask, zarr, pandera, rasterio, geopandas, xarray or
+  matplotlib at module import time: `tests/test_core_imports.py` checks it in
+  a subprocess and the `core-only` CI job installs with no extras.
 - Cassette-based tests (`pytest-recording`); no live network in CI.
 - SPDX header on every `.py` in `src/` and `scripts/` (enforced by pre-commit).
 
@@ -104,8 +119,10 @@ re-implement these.
 ```bash
 export RATTLER_CACHE_DIR=/u/aurora-r0/govorcin/.cache/rattler UV_CACHE_DIR=/u/aurora-r0/govorcin/.cache/uv
 pixi install -e dev
-pixi run -e dev test
+pixi run -e dev pytest --record-mode none   # ~2 min; without --record-mode none the
+                                             # cassette-less tests go to the network (~20 min)
 pixi run -e dev lint
+pixi run -e core-test pytest --record-mode none tests/test_core_imports.py tests/gps_sources
 ```
 
 ## Conventions
