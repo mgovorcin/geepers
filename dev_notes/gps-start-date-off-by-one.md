@@ -1,8 +1,9 @@
 # GPS series drops the first acquisition's day (off by one)
 
-Status: fixed on `feature/gps-start-date` (fix 1 below, with both
-regression tests). Found 2026-10-09 during the disp-xr T34 GNSS validation
-(`disp-xr/studies/gnss_validation`). Fix 2 is not done.
+Status: both fixes are on `feature/gps-start-date`, with regression tests.
+Found 2026-10-09 during the disp-xr T34 GNSS validation
+(`disp-xr/studies/gnss_validation`). disp-xr has the matching fix on its
+branch `feature/gnss-daily-day`.
 
 ## Symptom
 
@@ -71,9 +72,9 @@ merge_gps_insar(kept.set_index("date"), insar).los_insar.dropna().index[0]
 1. Compare calendar days in `_filter_by_date`: floor the start bound to the
    day (`_naive(start_date).normalize()`). Do it there rather than in
    `workflows.py`, so that every source and every caller is covered.
-2. Not done, and more important than first thought: in `merge_gps_insar`,
-   match each acquisition to the solution of its **own UTC day**, not the
-   nearest timestamp. See the next section.
+2. Done: when every GPS stamp is at midnight, `merge_gps_insar` matches each
+   acquisition's floored day (exact for the day, nearest within `tolerance`
+   if that day is missing). See the next section.
 
 ## Related: afternoon acquisitions get the next day's solution
 
@@ -91,10 +92,10 @@ matching on the acquisition's own day:
 | F39362 | 19:16 | 2.2 / 11.5 mm | 0.37 / 0.40 mm/yr |
 
 disp-xr's `gnss.align` has the same behaviour, so the two tools agree with
-each other while both being wrong. Fix: for daily solutions, match on the
-acquisition's floored day (`insar_times.normalize()`), or compare against
-the solution's centre (stamp + 12 h). Pending a decision, to be made
-together with the disp-xr fix (disp-xr `docs/studies/gnss_validation.md`).
+each other while both being wrong. Fixed: for daily solutions, `merge_gps_insar` matches on the acquisition's
+floored day (`insar_times.normalize()`). Floored days have no ties, unlike
+centring the stamps at noon, where a 00:00 acquisition is 12 h from both
+neighbours. disp-xr fixed `gnss.align` the same way (stamps centred at noon).
 
 ## Regression test
 

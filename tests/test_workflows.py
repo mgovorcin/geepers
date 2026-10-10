@@ -228,6 +228,19 @@ def test_first_acquisition_matches_its_own_day():
     assert matched.index.tolist() == [pd.Timestamp("2016-09-27")]
 
 
+@pytest.mark.parametrize("hour", [0, 0.44, 14.12, 19.27, 23.99])
+def test_daily_gps_matches_the_acquisition_day(hour):
+    """Regression: acquisitions after 12:00 UTC took the next day's solution."""
+    days = pd.date_range("2020-01-01", periods=6, freq="D")
+    df_gps = pd.DataFrame({"los_gps": np.arange(6.0)}, index=days)
+    acquired = pd.Timestamp("2020-01-03") + pd.Timedelta(hours=hour)
+    df_insar = pd.DataFrame({"los_insar": [1.0]}, index=pd.DatetimeIndex([acquired]))
+
+    matched = merge_gps_insar(df_gps, df_insar).dropna(subset="los_insar")
+
+    assert matched.index.tolist() == [pd.Timestamp("2020-01-03")]
+
+
 def test_merge_gps_insar_respects_tolerance():
     df_gps = pd.DataFrame(
         {"los_gps": [0.0, 1.0]}, index=pd.to_datetime(["2020-01-01", "2020-01-02"])
