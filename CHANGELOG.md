@@ -34,6 +34,9 @@ versions follow PEP 440 via setuptools_scm.
 
 ### Added
 
+- `estimate_trend(regressors=...)`: external explanatory series (loading,
+  well levels, temperature) estimated as `reg_<name>` with the trend, and
+  `geepers.trend.lagged_regressor` for delayed responses.
 - `geepers.euler`: ITRF2020-PMM and ITRF2014-PMM plate-motion tables
   (`geepers/data/`), `load_plate_motion_model`, `plate_pole`,
   `plate_velocity_enu` and `PLATE_CODES` (UNR two-letter codes → PMM names).
