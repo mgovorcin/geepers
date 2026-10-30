@@ -319,6 +319,19 @@ eastern North America looked noisier: their median of 3.1 compares with 3.3 for
 western non-PBO pairs and 0.9 for PBO pairs. Each pair costs a fit, so the
 time grows with `max_neighbors`.
 
+## Trends from the command line
+
+`geepers-trends` runs these fits on stations from a list or a bounding box,
+with medians on a 30-day grid and the source's step catalog:
+
+```bash
+geepers-trends --stations P056 LEMA GODE -o trends --horizon-years 3
+geepers-trends --bbox -118 33.5 -117 34.5 -o trends --components up east --neighbors
+```
+
+It writes `trends.csv` (mm/yr), `forecasts.csv` (mm) and, with `--neighbors`,
+`neighbors.csv` and `neighbor_pairs.csv`. See `geepers-trends --help`.
+
 ## Station stability metrics (`geepers.variability`)
 
 Quality metrics extracted from the AUS GNSS screening workflow:
