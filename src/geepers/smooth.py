@@ -223,7 +223,10 @@ def _search_smooth(
     value, log_phi, log_lam = min(
         (nll(np.log(p), v), np.log(p), v) for p in _PHIS for v in _LOG_LAMBDAS
     )
-    bounds = [(np.log(_PHIS[0]), np.log(_PHIS[-1])), (_LOG_LAMBDAS[0], _LOG_LAMBDAS[-1])]
+    bounds = [
+        (np.log(_PHIS[0]), np.log(_PHIS[-1])),
+        (_LOG_LAMBDAS[0], _LOG_LAMBDAS[-1]),
+    ]
     res = optimize.minimize(
         lambda v: nll(v[0], v[1]),
         x0=[log_phi, log_lam],
@@ -336,7 +339,9 @@ def fit_smooth_trend(
     rate_dates: list[pd.Timestamp] = []
     if evidence < min_evidence:
         rate_dates = screened_rates
-        rate_at = epochs.searchsorted(pd.DatetimeIndex(rate_dates)) if rate_dates else []
+        rate_at = (
+            epochs.searchsorted(pd.DatetimeIndex(rate_dates)) if rate_dates else []
+        )
         rate_years = np.array([t[i] for i in rate_at])
         x, names = _design_matrix(t, 1, periods_years, step_years, [], [], rate_years)
         _, phi = _search_noise(flicker, x, y0)

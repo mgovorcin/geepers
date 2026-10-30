@@ -142,9 +142,7 @@ class TestFitSmoothTrend:
 
     def test_without_detection_nothing_is_added(self):
         dates, values, _ = _series(lambda t: 25.0 * (t >= 5.0))
-        fit = fit_smooth_trend(
-            dates, values, sampling_days=MONTH, detect_changes=False
-        )
+        fit = fit_smooth_trend(dates, values, sampling_days=MONTH, detect_changes=False)
         assert fit.step_dates == []
         assert fit.rate_change_dates == []
 
@@ -153,7 +151,12 @@ class TestFitSmoothTrend:
         # outside the record have no data on one side; none of them may raise
         dates, values, _ = _series()
         keep = np.r_[0:40, 50:144]
-        steps = [dates[42], dates[44], dates[0] - pd.Timedelta(days=30), dates[-1] + pd.Timedelta(days=30)]
+        steps = [
+            dates[42],
+            dates[44],
+            dates[0] - pd.Timedelta(days=30),
+            dates[-1] + pd.Timedelta(days=30),
+        ]
         fit = fit_smooth_trend(
             dates[keep],
             values[keep],
@@ -230,7 +233,9 @@ class TestForecastSmooth:
     def test_level_scales_the_interval(self, linear):
         dates, values, fit = linear
         wide = forecast_smooth(dates, values, 2, sampling_days=MONTH, fit=fit)
-        narrow = forecast_smooth(dates, values, 2, sampling_days=MONTH, fit=fit, level=0.5)
+        narrow = forecast_smooth(
+            dates, values, 2, sampling_days=MONTH, fit=fit, level=0.5
+        )
         ratio = (wide.table["upper"] - wide.table["lower"]) / (
             narrow.table["upper"] - narrow.table["lower"]
         )
@@ -326,7 +331,9 @@ class TestSmoothRegression:
                 "sigma_flicker": fit.sigma_flicker,
                 "steps": [str(d.date()) for d in fit.step_dates],
                 "rates": fit.rates.iloc[[0, 40, 56, 80, 143]].tolist(),
-                "table": table.iloc[[0, 11, 23, 35]].reset_index(drop=True).to_dict("list"),
+                "table": (
+                    table.iloc[[0, 11, 23, 35]].reset_index(drop=True).to_dict("list")
+                ),
             },
             rtol=1e-3,
         )

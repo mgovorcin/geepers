@@ -69,6 +69,24 @@ Notes:
 - `use_rmle=True` (default) applies the restricted-likelihood
   correction for the parameters absorbed by the deterministic model.
 
+### External regressors
+
+Hydrological loading, well levels or temperature enter the trajectory
+model as extra columns, estimated with the trend under the same noise
+model. A regressor that itself trends takes that part of the rate.
+`lagged_regressor` samples a driver at fixed lags for delayed responses
+(an aquifer after rainfall):
+
+```python
+from geepers.trend import estimate_trend, lagged_regressor
+
+res = estimate_trend(dates, up_mm, regressors={"grace": grace_mm})
+res.parameters["reg_grace"]          # mm per mm of loading, 1-sigma
+
+lags = lagged_regressor(dates, rain_dates, rain_mm, [0, 30, 60, 90], name="rain")
+res = estimate_trend(dates, up_mm, regressors=lags)
+```
+
 ## Is a single rate enough? (`geepers.linearity`)
 
 A velocity is only worth extrapolating if the series is linear.

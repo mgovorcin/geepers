@@ -59,6 +59,9 @@ versions follow PEP 440 via setuptools_scm.
   with the amplitudes integrated out. Both report the present-day rate.
 - `estimate_trend(rate_change_dates=...)`: trend changes without an offset
   (hinge terms `rate_change_<i>`).
+- `estimate_trend(regressors=...)`: external explanatory series (loading,
+  well levels, temperature) estimated as `reg_<name>` with the trend, and
+  `geepers.trend.lagged_regressor` for delayed responses.
 - `geepers.euler`: ITRF2020-PMM and ITRF2014-PMM plate-motion tables
   (`geepers/data/`), `load_plate_motion_model`, `plate_pole`,
   `plate_velocity_enu` and `PLATE_CODES` (UNR two-letter codes → PMM names).
