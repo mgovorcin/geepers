@@ -331,6 +331,18 @@ times smaller than the pair medians, and these come from different samples of
 stations, so trust their ordering more than their size. Each pair costs a fit,
 so the time grows with `max_neighbors`.
 
+## Monuments (`UnrSource.monuments`)
+
+`UnrSource().monuments()` reads the UNR monument table for 12,478 stations and
+classifies each. A mast on a roof counts as a building, since it moves with one.
+The table comes from station logs: 17 % have no usable type, and most depths and
+geology are blank. Station names do not stand in for it: of 230 `P###` stations
+in the study below, 113 are deep-braced, 81 braced and 35 unspecified.
+
+```bash
+python scripts/unr-monuments.py -o joined.csv --neighbors trends/neighbors.csv
+```
+
 ## Trends from the command line
 
 `geepers-trends` runs these fits on stations from a list or a bounding box,
