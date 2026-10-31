@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from geepers.changepoints import detect_changepoints, fit_sparse_changepoints
-from geepers.forecast import backtest, forecast_trend
+from geepers.forecast import _symmetric_root, backtest, forecast_trend
 from geepers.synthetic import power_law_noise
 
 MONTH = 365.25 / 12
@@ -205,6 +205,32 @@ def _rows(table: pd.DataFrame, positions: list[int]) -> list[dict]:
             picked.index, picked.to_dict(orient="records"), strict=True
         )
     ]
+
+
+class TestSymmetricRoot:
+    @staticmethod
+    def _covariance():
+        rng = np.random.default_rng(0)
+        factor = rng.normal(size=(6, 4))
+        return factor @ factor.T  # rank deficient, as a covariance can be
+
+    def test_it_reproduces_the_covariance(self):
+        cov = self._covariance()
+        root = _symmetric_root(cov)
+        np.testing.assert_allclose(root @ root.T, cov, atol=1e-10)
+
+    def test_it_does_not_depend_on_eigenvector_signs(self, monkeypatch):
+        """Regression: intervals changed with the platform and thread count."""
+        cov = self._covariance()
+        expected = _symmetric_root(cov)
+        real = np.linalg.eigh
+
+        def flipped(matrix):
+            values, vectors = real(matrix)
+            return values, -vectors
+
+        monkeypatch.setattr(np.linalg, "eigh", flipped)
+        np.testing.assert_allclose(_symmetric_root(cov), expected)
 
 
 class TestForecastRegression:
