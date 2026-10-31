@@ -241,10 +241,20 @@ Limits:
   `max_random_walk_mm` (default 3). On simulated
   linear series the smooth trend is chosen on 1-2 % with a true random walk
   up to 3 mm/sqrt(yr) and on 14 % at 5, against 8-28 % and 43 % without the
-  limit. Differences of station pairs within 25 km give a median of 2.7
-  mm/sqrt(yr), including local signals, so 3 is a generous limit on
-  monument noise, but not a measurement of it. About 1 in 5 moderate signals
-  (a 30 mm decay over 12 years) is missed and gets the piecewise model.
+  limit. Differences of station pairs within 25 km give a median of 0.9
+  mm/sqrt(yr) between PBO stations and 3.1-3.3 between others, including local
+  signals, so 3 is generous for deep-drilled monuments and a judgement
+  everywhere. About 1 in 5 moderate signals (a 30 mm decay over 12 years) is
+  missed and gets the piecewise model.
+- **The limit of 3 does not suit InSAR pixels.** On three 10-year stacks (Prado
+  twice, Oahe) with 5 x 5 multilooks at 10 m and 30-day medians, pixels 250-500
+  m apart share nearly all real signal, so a smooth verdict on their difference
+  is close to a false alarm. It happens on 10-20 % at a limit of 3, 3.5-10 % at
+  5, 1-4.5 % at 8 and 0-2.5 % at 12. Use `max_random_walk_mm=8` for pixels. Decays
+  added to those differences are then found on 96 % at 120 mm, 53 % at 60 mm and
+  21 % at 30 mm, against 100 %, 90 % and 52 % at 3. A difference has sqrt(2) more
+  noise than a pixel, so these rates are pessimistic for one pixel, and the limit
+  will differ for other stacks and multilook sizes.
 - Knots default to one per year, so the rate is a yearly staircase and
   cannot follow an annual cycle of varying amplitude; denser knots let the
   present-day rate depend on the month the record ends.
@@ -316,8 +326,10 @@ mm/sqrt(yr) in eastern and 1.35 in western North America for non-PBO stations,
 and 0.25 for PBO stations (named `P###`, a proxy for deep-drilled braced
 monuments). Monument type, rather than region, explains why close pairs in
 eastern North America looked noisier: their median of 3.1 compares with 3.3 for
-western non-PBO pairs and 0.9 for PBO pairs. Each pair costs a fit, so the
-time grows with `max_neighbors`.
+western non-PBO pairs and 0.9 for PBO pairs. The per-station shares are 2-3
+times smaller than the pair medians, and these come from different samples of
+stations, so trust their ordering more than their size. Each pair costs a fit,
+so the time grows with `max_neighbors`.
 
 ## Trends from the command line
 
