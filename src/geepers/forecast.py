@@ -136,6 +136,18 @@ def _future_regressors(
     return names, columns[:, order]
 
 
+def _symmetric_root(covariance: np.ndarray) -> np.ndarray:
+    """Return the symmetric square root of a covariance matrix.
+
+    Unlike a factor built from the eigenvectors alone, as in
+    `numpy.random.Generator.multivariate_normal`, it does not depend on their
+    signs, which change with the platform and the number of threads. The
+    same seed therefore gives the same samples everywhere.
+    """
+    values, vectors = np.linalg.eigh(covariance)
+    return (vectors * np.sqrt(np.clip(values, 0.0, None))) @ vectors.T
+
+
 def forecast_trend(
     dates: ArrayLike,
     values: ArrayLike,
@@ -304,8 +316,8 @@ def forecast_trend(
 
     rng = np.random.default_rng(seed)
     mean = model + noise_mean
-    samples = rng.multivariate_normal(
-        mean, cov_model + cov_noise, size=n_simulations, method="eigh"
+    samples = mean + rng.standard_normal((n_simulations, len(mean))) @ _symmetric_root(
+        cov_model + cov_noise
     )
 
     span = float(obs_idx[-1] * to_years)
