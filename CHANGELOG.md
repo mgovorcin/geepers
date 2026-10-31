@@ -34,6 +34,9 @@ versions follow PEP 440 via setuptools_scm.
 
 ### Added
 
+- `geepers-trends` command: fits `smooth`, `piecewise` or `sparse` trends to
+  stations from a list or bounding box, in mm/yr, with optional forecasts and
+  neighbor comparison.
 - `geepers.neighbors.check_neighbors`: differences close stations to tell a
   smooth signal the neighbors share from one local to a station, and splits
   random-walk noise among stations.
