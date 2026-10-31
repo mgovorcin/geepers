@@ -345,10 +345,9 @@ def fit_smooth_trend(
         mm/sqrt(yr) whatever the `units`. Default 3. None compares against
         flicker + white noise only.
 
-        Differences of station pairs within 25 km give a median of 0.9
-        mm/sqrt(yr) between PBO stations and 3.1-3.3 between others, which
-        still includes local signals, so 3 is a judgement, generous for
-        deep-drilled monuments. On simulated linear series the smooth
+        Differences of same-class station pairs within 25 km have medians
+        from 0.7 (deep-braced) to 2.0 mm/sqrt(yr) (masts), though 13-31 % of
+        stations exceed 3, so 3 is a judgement. On simulated linear series the smooth
         trend is chosen on 2 % with a true random walk of 3 and on 14 % at
         5, against 28 % and 43 % without the limit. Signals near the limit
         are missed more often (1 in 5 of 30 mm decays over 12 years) and
