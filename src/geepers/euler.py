@@ -522,6 +522,9 @@ def local_plate_velocity(
     lat = np.asarray(lat, float)
     km = great_circle_degrees(lat0, lon0, lat, lon) * KM_PER_DEGREE
     keep = km <= radius_km
+    # A station with no usable rate would stop the least-squares solver
+    for values in (ve, vn, sigma_e, sigma_n):
+        keep &= np.isfinite(np.asarray(values, float))
     if breaklines is not None:
         keep &= ~crosses_breaklines(lon, lat, lon0, lat0, breaklines)
     if keep.sum() < min_stations:
