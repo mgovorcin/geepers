@@ -134,6 +134,14 @@ class TestLocalPlateVelocity:
     def test_too_few_stations_gives_nan(self):
         assert np.isnan(local_plate_velocity(*self.stations(), 80.0, 30.0)[0])
 
+    def test_stations_with_no_usable_rate_are_left_out(self):
+        lon, lat, ve, vn, se, sn = self.stations()
+        clean = local_plate_velocity(lon, lat, ve, vn, se, sn, 0.0, 30.0)
+        lon, lat = np.r_[lon, 0.1], np.r_[lat, 30.1]
+        ve, vn = np.r_[ve, np.nan], np.r_[vn, 1.0]
+        se, sn = np.r_[se, 1.0], np.r_[sn, np.inf]
+        assert local_plate_velocity(lon, lat, ve, vn, se, sn, 0.0, 30.0) == clean
+
     def test_breakline_excludes_the_far_plate(self):
         lon, lat, ve, vn, se, sn = self.stations()
         ve = np.where(lon < 0, -40.0, 40.0)
