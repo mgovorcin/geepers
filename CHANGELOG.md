@@ -12,6 +12,7 @@ versions follow PEP 440 via setuptools_scm.
   spatial gap filling and daily imaging. Daily filling and imaging weight by distance
   alone, as the published Version 0.3 medians show; `weight_by_sigma=True` follows ATBD
   Eq. (6) as written.
+- `gridding.PUBLISHED_SELECTION`: the daily station selection closest to the published grid.
 - `scripts/recreate-unr-grid.py` and the notebook "Recreating the UNR grid": rebuild both
   UNR products in a box and score them against the published files.
 - `UnrGridSource.node_series`: one grid point as published, indexed by calendar day.

@@ -12,10 +12,10 @@ Writes `stations.csv`, `rates.csv` and `daily.npz` to the output directory. Unle
 `--no-compare` is given, it also scores both against the published Version 0.3 files
 and writes `scores_rates.csv` and `scores_daily.csv`.
 
-The defaults reproduce the published grid best, as far as tested in Southern California
-and northern Nevada: the curve of ATBD Figure 2-23, and no completeness limit, since
-published nodes follow stations the 80% limit rejects. See "Recreating the UNR grid" in
-docs/notebooks/gps_imaging_unr_grid.ipynb for what is documented and what is inferred.
+The defaults reproduce the published grid best in the regions tested: the curve of ATBD
+Figure 2-23, and for daily stations only the 4 year rule the ATBD gives for rates, since
+published nodes follow stations its stricter limits reject. See "Recreating the UNR
+grid" in docs/notebooks/gps_imaging_unr_grid.ipynb for what is documented and inferred.
 """
 
 from __future__ import annotations
@@ -190,11 +190,11 @@ def run(
     rates.to_csv(args.output / "rates.csv", index=False)
     written["rates"] = args.output / "rates.csv"
 
-    limits = (
-        gridding.SelectionCriteria()
-        if args.selection == "atbd"
-        else gridding.SelectionCriteria(min_completeness=0.0)
-    )
+    limits = {
+        "as-published": gridding.PUBLISHED_SELECTION,
+        "no-completeness": gridding.SelectionCriteria(min_completeness=0.0),
+        "atbd": gridding.SelectionCriteria(),
+    }[args.selection]
     chosen = gridding.decluster(table[gridding.select_time_variable(table, limits)])
     print(
         f"{len(table)} stations long enough, {len(chosen)} selected for daily",
@@ -266,9 +266,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--end", default="2026-03-06", help="first day not to use")
     parser.add_argument(
         "--selection",
-        choices=("no-completeness", "atbd"),
-        default="no-completeness",
-        help="daily stations: atbd adds its 80%% completeness limit",
+        choices=("as-published", "no-completeness", "atbd"),
+        default="as-published",
+        help="daily stations: atbd applies section 2.5.2 as written",
     )
     parser.add_argument("--ssf", choices=("fig2-23", "regional"), default="fig2-23")
     parser.add_argument("--workers", type=int, default=8)

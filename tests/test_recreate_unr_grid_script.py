@@ -146,6 +146,11 @@ def test_rebuild_writes_and_recovers_a_shared_signal(tmp_path):
     assert daily[daily.component == "east"].rms_monthly_mm.max() < 2.0
 
 
+def test_selection_defaults_to_the_published_one(tmp_path):
+    assert arguments(tmp_path).selection == "as-published"
+    assert arguments(tmp_path, "--selection", "atbd").selection == "atbd"
+
+
 def test_no_compare_reads_no_published_files(tmp_path):
     class NoFiles(FakeGrid):
         def node_series(self, _grid_id):
