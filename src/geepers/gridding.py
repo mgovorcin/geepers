@@ -38,6 +38,7 @@ from geepers.midas import midas
 from geepers.variability import rate_variability_index
 
 __all__ = [
+    "PUBLISHED_SELECTION",
     "SelectionCriteria",
     "atbd_ssf",
     "background_rates",
@@ -87,6 +88,18 @@ class SelectionCriteria:
     max_variability: Mapping[str, float] = field(
         default_factory=lambda: {"east": 5.0, "north": 5.0, "up": 15.0}
     )
+
+
+_NO_LIMIT = dict.fromkeys(COMPONENTS, np.inf)
+# The stations that best reproduce the published Version 0.3 daily grid, inferred from
+# it: the 4 year rule the ATBD gives for the time-constant product, and no other limit.
+PUBLISHED_SELECTION = SelectionCriteria(
+    min_years=4.0,
+    min_completeness=0.0,
+    max_speckle=_NO_LIMIT,
+    max_misfit=_NO_LIMIT,
+    max_variability=_NO_LIMIT,
+)
 
 
 def atbd_ssf() -> np.ndarray:
@@ -290,7 +303,8 @@ def select_time_variable(
     ----------
     stats : pd.DataFrame
         Output of `station_parameters` for each station, plus `filter_station_rates`.
-        A missing misfit or variability counts as failing.
+        A missing misfit, variability or filtered rate passes, since sparse records
+        can have no estimate of them. The other limits say nothing about such a station.
     criteria : SelectionCriteria, optional
         Default: the limits as the ATBD states them.
 
@@ -306,9 +320,9 @@ def select_time_variable(
     )
     for c in COMPONENTS:
         k = c[0]
-        keep &= (stats[f"v{k}"] - stats[f"vmsf{k}"]).abs() < limits.max_speckle[c]
-        keep &= stats[f"misfit_{k}"] <= limits.max_misfit[c]
-        keep &= stats[f"variability_{k}"] < limits.max_variability[c]
+        keep &= ~((stats[f"v{k}"] - stats[f"vmsf{k}"]).abs() >= limits.max_speckle[c])
+        keep &= ~(stats[f"misfit_{k}"] > limits.max_misfit[c])
+        keep &= ~(stats[f"variability_{k}"] >= limits.max_variability[c])
     return keep
 
 

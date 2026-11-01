@@ -154,12 +154,29 @@ class TestSelectTimeVariable:
             ({"vu": 17.0}, False),
             ({"misfit_n": 11.0}, False),
             ({"variability_u": 16.0}, False),
-            ({"misfit_e": np.nan}, False),
+            ({"misfit_e": np.nan}, True),
+            ({"variability_n": np.nan}, True),
         ],
     )
     def test_atbd_limits(self, change, expected):
         stats = pd.DataFrame([self.row(**change)])
         assert bool(gridding.select_time_variable(stats).iloc[0]) is expected
+
+    @pytest.mark.parametrize(
+        ("change", "expected"),
+        [
+            ({"duration_since_start": 4.0}, True),
+            ({"duration_since_start": 3.9}, False),
+            ({"completeness": 5.0}, True),
+            ({"ve": 50.0}, True),
+            ({"misfit_u": 500.0}, True),
+            ({"variability_e": 50.0}, True),
+        ],
+    )
+    def test_published_selection_keeps_only_the_duration_rule(self, change, expected):
+        stats = pd.DataFrame([self.row(**change)])
+        kept = gridding.select_time_variable(stats, gridding.PUBLISHED_SELECTION)
+        assert bool(kept.iloc[0]) is expected
 
     def test_a_criterion_can_be_relaxed(self):
         stats = pd.DataFrame([self.row(completeness=10.0)])
